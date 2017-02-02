@@ -1,0 +1,163 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: API Gateway and Lambda functions along with related resources for Billing Dashboard.
+
+Parameters:
+  RedshiftUser:
+    Type: String
+    Default: "billing"
+    Description: User Name for Redshift Cluster
+  RedshiftPass:
+    Type: String
+    NoEcho: true
+    Description: Password for Redshift Cluster. Password should be atleast 8 characters long.
+  RedshiftDatabase:
+    Type: String
+    Default: "billing"
+    Description: Database Name for Redshift Cluster. Don't Enter Value if 'RedshiftConnectionString' Has Value
+
+Resources:
+  EncryptionDecryptionKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: "Encryption and Decryption key for Lambda"
+      KeyPolicy:
+        Id: "LambdaEncDec"
+        Version: "2012-10-17"
+        Statement:
+          -
+            Sid: "Allow administration of the key"
+            Effect: "Allow"
+            Action:
+              - "kms:*"
+            Principal:
+              AWS: !Ref AWS::AccountId
+            Resource: '*'
+          -
+            Sid: "Allow Encryption Service to use this key"
+            Effect: "Allow"
+            Action:
+              - "kms:Encrypt"
+            Principal:
+              AWS: !GetAtt LambdaFunctionIAMRole.Arn
+            Resource: '*'
+          -
+            Sid: "Allow Decryption Service to use this key"
+            Effect: "Allow"
+            Action:
+              - "kms:Decrypt"
+            Principal:
+              AWS: !GetAtt LambdaFunctionIAMRole.Arn
+            Resource: '*'
+
+  RedshiftCluster:
+    Type: "AWS::Redshift::Cluster"
+    Properties:
+      DBName: !Ref RedshiftDatabase
+      MasterUsername: !Ref RedshiftUser
+      MasterUserPassword: !Ref RedshiftPass
+      NodeType: "dw.hs1.xlarge"
+      ClusterType: "single-node"
+
+  BucketServiceIAMRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      Path: "/"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Sid: "AllowRedshiftServiceToAssumeRole"
+            Effect: "Allow"
+            Action:
+              - "sts:AssumeRole"
+            Principal:
+              Service:
+                - "redshift.amazonaws.com"
+
+  LambdaFunctionIAMRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      Path: "/"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Sid: "AllowLambdaServiceToAssumeRole"
+            Effect: "Allow"
+            Action:
+              - "sts:AssumeRole"
+            Principal:
+              Service:
+                - "lambda.amazonaws.com"
+      Policies:
+        -
+          PolicyName: "InlinePolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Effect: "Allow"
+                Action:
+                  - "iam:*"
+                  - "kms:*"
+                  - "s3:*"
+                  - "sts:*"
+                Resource: "*"
+              -
+                Effect: "Allow"
+                Action:
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: "arn:aws:logs:*:*:*"
+
+  ImportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index_import.handler
+      Runtime: nodejs4.3
+      CodeUri: ./src
+      Role: !GetAtt LambdaFunctionIAMRole.Arn
+      Timeout: 300
+      Environment:
+        Variables:
+          BUCKET_IAM_ROLE_ARN: !GetAtt BucketServiceIAMRole.Arn
+          BUCKET_REGION: !Ref 'AWS::Region'
+          REDSHIFT_CONNECTION_STRING: !Join
+            - ''
+            - - !Sub "${RedshiftCluster.Endpoint.Address}"
+              - ':'
+              - !Sub "${RedshiftCluster.Endpoint.Port}"
+              - '/'
+              - !Ref RedshiftDatabase
+          REDSHIFT_USER: !Ref RedshiftUser
+          REDSHIFT_PASS: !Ref RedshiftPass
+          KMS_REGION: !Ref 'AWS::Region'
+          KMS_KEY_ID: !Ref EncryptionDecryptionKey
+          KMS_KEY_ARN: !GetAtt EncryptionDecryptionKey.Arn
+      Events:
+        BillingDataUpload:
+          Type: S3
+          Properties:
+            Bucket: !Ref Bucket
+            Events: s3:ObjectCreated:*
+
+  Bucket:
+    Type: AWS::S3::Bucket
+
+Outputs:
+  RedshiftConnectionString:
+    Description: "Redshift Connection String"
+    Value: Join
+      - ''
+      - - !Sub "${RedshiftCluster.Endpoint.Address}"
+        - ':'
+        - !Sub "${RedshiftCluster.Endpoint.Port}"
+        - '/'
+        - !Ref RedshiftDatabase
+  ImportLambdaFunction:
+    Description: "Import Lambda Function ARN"
+    Value: !GetAtt ImportFunction.Arn

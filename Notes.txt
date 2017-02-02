@@ -1,0 +1,42 @@
+
+=============================================================================================================
+Temporary manual steps to complete the deployment in billing master account, '054649790173'
+=============================================================================================================
+1. correct the lambda function in API Gateway to give invoke permission to API Gateway
+  - need to change lambda function name to ${stageVariables.LambdaFunctionName} in swagger.yaml,
+    which is not done because ${stageVariables.LambdaFunctionName} doesn't seem to be working
+
+2. Re-deploy both stages, Prod & Stage
+
+3. Encrypt 'REDSHIFT_PASS' env variable using the newly created key in the Lambda functions
+
+4. Change 'REDSHIFT_CONNECTION_STRING' to the old redshift
+    billingcluster.c1ryz9ousvcz.us-east-1.redshift.amazonaws.com:5439/dev
+
+5. deploy ui to 'sgas.sam.aws-services-billing-ui' bucket
+    $ npm run build
+
+
+=============================================================================================================
+Need to do for clean up old sources in billing master account, '054649790173'
+=============================================================================================================
+
+1. remove 'billing.cto.sungardas.com.test.redshift.ui' bucket for web hosting
+
+2. remove 'BillingAPI' in API Gateway
+
+3. remove 'billing_comparison' & 'redshift_sql_runner' & 'billing_file_created' Lambda functions
+
+4. remove 'lambda_billing' & 'service-role/lambda_s3_execution' IAM Roles
+
+5. remove Redshit, 'billingcluster'
+
+6. remove billing report, 'ToRedshitWithResourceIds'
+
+7. remove billing report s3 bucket, 'billing.cto.sungardas.com.test.redshift.res'
+
+=============================================================================================================
+Need to do for clean up old sources in account, '089476987273'
+=============================================================================================================
+
+1. remove 'BillingLambda' stack
