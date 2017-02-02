@@ -151,7 +151,7 @@ Resources:
 Outputs:
   RedshiftConnectionString:
     Description: "Redshift Connection String"
-    Value: Join
+    Value: !Join
       - ''
       - - !Sub "${RedshiftCluster.Endpoint.Address}"
         - ':'
@@ -161,3 +161,7 @@ Outputs:
   ImportLambdaFunction:
     Description: "Import Lambda Function ARN"
     Value: !GetAtt ImportFunction.Arn
+
+  BillingDataUploadBucketName:
+    Description: "Billing Data Upload Bucket Name"
+    Value: !Ref Bucket

@@ -19,7 +19,7 @@ Input Parameter Values
 - GitHubSourceRepositoryBranch: master
 - GitHubSourceRepositoryName: aws-services-billing-import
 - GitHubSourceRepositoryOwner: AlexOugh
-- ParameterOverrides:
+- ParameterOverrides: { "RedshiftUser": "*username*", "RedshiftPass": "*password*", "RedshiftDatabase": "*database_name*" }
 - ProjectImage: aws/codebuild/nodejs:4.3.2
 
 
