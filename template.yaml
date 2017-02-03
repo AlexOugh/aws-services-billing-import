@@ -3,6 +3,9 @@ Transform: AWS::Serverless-2016-10-31
 Description: API Gateway and Lambda functions along with related resources for Billing Dashboard.
 
 Parameters:
+  VPCCidrBlock:
+    Type: String
+    Description: CidrBlock for Redshift Cluster VPC
   RedshiftUser:
     Type: String
     Default: "billing"
@@ -50,14 +53,26 @@ Resources:
               AWS: !GetAtt LambdaFunctionIAMRole.Arn
             Resource: '*'
 
+  RedshiftClusterVPC:
+    Type: "AWS::EC2::VPC"
+    Properties:
+      CidrBlock: !Ref VPCCidrBlock
+      Tags:
+        -
+          Key: Name
+          Value: RedshiftClusterVPC
+
   RedshiftCluster:
     Type: "AWS::Redshift::Cluster"
     Properties:
+      ClusterSecurityGroups:
+        - !GetAtt RedshiftClusterVPC.DefaultSecurityGroup
       DBName: !Ref RedshiftDatabase
       MasterUsername: !Ref RedshiftUser
       MasterUserPassword: !Ref RedshiftPass
-      NodeType: "dw.hs1.xlarge"
+      NodeType: "dc1.large"
       ClusterType: "single-node"
+      Encrypted: true
 
   BucketServiceIAMRole:
     Type: "AWS::IAM::Role"
@@ -117,7 +132,7 @@ Resources:
   ImportFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: index_import.handler
+      Handler: index.handler
       Runtime: nodejs4.3
       CodeUri: ./src
       Role: !GetAtt LambdaFunctionIAMRole.Arn

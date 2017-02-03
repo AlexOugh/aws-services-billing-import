@@ -18,10 +18,20 @@ Input Parameter Values
 - GitHubPersonalAccessToken: *access_token* (See <a href="https://help.github.com/articles/creating-an-access-token-for-command-line-use/">here</a> to find how to genernate the access token)
 - GitHubSourceRepositoryBranch: master
 - GitHubSourceRepositoryName: aws-services-billing-import
-- GitHubSourceRepositoryOwner: AlexOugh
+- GitHubSourceRepositoryOwner: SungardAS
 - ParameterOverrides: { "RedshiftUser": "*username*", "RedshiftPass": "*password*", "RedshiftDatabase": "*database_name*" }
 - ProjectImage: aws/codebuild/nodejs:4.3.2
 
+
+## How to Setup a Billing Report to Upload Billing Data to S3 Bucket & Redshift
+
+The creation of this project stack will be started automatically once its Codepipline is successfully setup.
+
+Follow steps in <a href="https://aws.amazon.com/blogs/aws/new-upload-aws-cost-usage-reports-to-redshift-and-quicksight/">here</a> for more detail.
+
+  - Specify 'BillingDataUploadBucketName' value in the Output of the newly created this project stack for the S3 Bucket Name
+
+Once the billing report is created in the S3 bucket, the billing data will be automatically imported to the Redshift.
 
 ## How To Test Lambda Functions
 
